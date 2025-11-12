@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   if (!targetUrl) return res.status(400).send("URL parametresi eksik.");
 
-  // 🔐 Güvenlik kontrolü
+  // ✅ İmza kontrolü
   const expectedSig = crypto
     .createHash("sha256")
     .update(targetUrl + secret)
@@ -22,8 +22,7 @@ export default async function handler(req, res) {
       headers: {
         "Referer": "https://trgoalsgiris.xyz/",
         "Origin": "https://trgoalsgiris.xyz/",
-        // ExoPlayer cihazdan gelen gerçek user-agent'ı kullan
-        "User-Agent": req.headers["user-agent"] || "ExoPlayer"
+        "User-Agent": req.headers["user-agent"] || "ExoPlayer",
       },
     });
 
@@ -31,13 +30,18 @@ export default async function handler(req, res) {
       return res.status(response.status).send("Yayın yüklenemedi veya erişim reddedildi.");
     }
 
+    // 🔸 ExoPlayer için gerekli header ayarları
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Headers", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
 
-    const data = await response.text();
-    res.send(data);
+    // İçerik türünü doğru şekilde kopyala
+    const contentType = response.headers.get("content-type") || "application/vnd.apple.mpegurl";
+    res.setHeader("Content-Type", contentType);
+
+    // 🔹 Yayını stream et
+    const body = await response.text();
+    res.send(body);
   } catch (e) {
     console.error("Proxy hatası:", e);
     res.status(500).send("Bağlantı hatası veya yayın bulunamadı.");
