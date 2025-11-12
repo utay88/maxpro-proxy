@@ -7,14 +7,12 @@ export default async function handler(req, res) {
       headers: {
         "Referer": "https://trgoalsgiris.xyz/",
         "Origin": "https://trgoalsgiris.xyz/",
-        "User-Agent": req.headers["user-agent"] || "Mozilla/5.0"
+        "User-Agent": "ExoPlayer/2.19.1 (Linux;Android 11)"
       }
     });
-    const data = await response.arrayBuffer();
-    res.setHeader("Content-Type", response.headers.get("content-type") || "application/vnd.apple.mpegurl");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.status(response.status).send(Buffer.from(data));
-  } catch (e) {
-    res.status(500).send("Bağlantı hatası veya yayın bulunamadı.");
-  }
-}
+
+    if (!response.ok) {
+      return res.status(response.status).send("Yayın yüklenemedi veya erişim reddedildi.");
+    }
+
+    res.setHeader("
