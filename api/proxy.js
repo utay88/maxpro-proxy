@@ -1,8 +1,6 @@
 import crypto from "crypto";
 
-export const config = {
-  runtime: "edge",
-};
+export const config = { runtime: "edge" };
 
 export default async function handler(req) {
   const { searchParams } = new URL(req.url);
@@ -14,7 +12,6 @@ export default async function handler(req) {
     return new Response("URL parametresi eksik.", { status: 400 });
   }
 
-  // 🔒 İmza doğrulama
   const expectedSig = crypto
     .createHash("sha256")
     .update(targetUrl + secret)
@@ -39,21 +36,14 @@ export default async function handler(req) {
       });
     }
 
-    // 🔸 Yanıtı birebir stream et (video akışı)
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
     newHeaders.set("Access-Control-Allow-Headers", "*");
     newHeaders.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-    newHeaders.set(
-      "Content-Type",
-      "application/vnd.apple.mpegurl"
-    );
+    newHeaders.set("Content-Type", "application/vnd.apple.mpegurl");
 
     const body = await response.text();
-    return new Response(body, {
-      status: 200,
-      headers: newHeaders,
-    });
+    return new Response(body, { status: 200, headers: newHeaders });
   } catch (err) {
     return new Response("Bağlantı hatası veya yayın bulunamadı.", {
       status: 500,
