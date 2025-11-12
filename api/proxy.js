@@ -15,4 +15,15 @@ export default async function handler(req, res) {
       return res.status(response.status).send("Yayın yüklenemedi veya erişim reddedildi.");
     }
 
-    res.setHeader("
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+
+    const data = await response.text();
+    res.send(data);
+  } catch (e) {
+    console.error("Proxy hatası:", e);
+    res.status(500).send("Bağlantı hatası veya yayın bulunamadı.");
+  }
+}
