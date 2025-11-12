@@ -1,20 +1,27 @@
 import crypto from "crypto";
 
-export default async function handler(req, res) {
-  const targetUrl = req.query.url;
-  const sig = req.query.sig;
+export const config = {
+  runtime: "edge",
+};
+
+export default async function handler(req) {
+  const { searchParams } = new URL(req.url);
+  const targetUrl = searchParams.get("url");
+  const sig = searchParams.get("sig");
   const secret = process.env.SIGN_SECRET || "default_secret";
 
-  if (!targetUrl) return res.status(400).send("URL parametresi eksik.");
+  if (!targetUrl) {
+    return new Response("URL parametresi eksik.", { status: 400 });
+  }
 
-  // ✅ İmza kontrolü
+  // 🔒 İmza doğrulama
   const expectedSig = crypto
     .createHash("sha256")
     .update(targetUrl + secret)
     .digest("hex");
 
   if (expectedSig !== sig) {
-    return res.status(401).send("Yetkisiz erişim – geçersiz imza.");
+    return new Response("Yetkisiz erişim – geçersiz imza.", { status: 401 });
   }
 
   try {
@@ -22,28 +29,34 @@ export default async function handler(req, res) {
       headers: {
         "Referer": "https://trgoalsgiris.xyz/",
         "Origin": "https://trgoalsgiris.xyz/",
-        "User-Agent": req.headers["user-agent"] || "ExoPlayer",
+        "User-Agent": "ExoPlayer/2.19.1 (Linux;Android 11)",
       },
     });
 
     if (!response.ok) {
-      return res.status(response.status).send("Yayın yüklenemedi veya erişim reddedildi.");
+      return new Response("Yayın yüklenemedi veya erişim reddedildi.", {
+        status: response.status,
+      });
     }
 
-    // 🔸 ExoPlayer için gerekli header ayarları
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    // 🔸 Yanıtı birebir stream et (video akışı)
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("Access-Control-Allow-Origin", "*");
+    newHeaders.set("Access-Control-Allow-Headers", "*");
+    newHeaders.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    newHeaders.set(
+      "Content-Type",
+      "application/vnd.apple.mpegurl"
+    );
 
-    // İçerik türünü doğru şekilde kopyala
-    const contentType = response.headers.get("content-type") || "application/vnd.apple.mpegurl";
-    res.setHeader("Content-Type", contentType);
-
-    // 🔹 Yayını stream et
     const body = await response.text();
-    res.send(body);
-  } catch (e) {
-    console.error("Proxy hatası:", e);
-    res.status(500).send("Bağlantı hatası veya yayın bulunamadı.");
+    return new Response(body, {
+      status: 200,
+      headers: newHeaders,
+    });
+  } catch (err) {
+    return new Response("Bağlantı hatası veya yayın bulunamadı.", {
+      status: 500,
+    });
   }
 }
